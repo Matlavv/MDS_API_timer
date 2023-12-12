@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const timerController = require('../controllers/timerController');
-const jwtMiddleware = require('../middlewares/jwtMiddleware'); // Assurez-vous que le chemin est correct
+const jwtMiddleware = require('../middlewares/jwtMiddleware'); 
 
 // Route pour ajouter un temps de réaction pour l'utilisateur actuel
 router.post('/add', jwtMiddleware.verifyToken, timerController.addTime);

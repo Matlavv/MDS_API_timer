@@ -5,12 +5,15 @@ const userController = require('../controllers/userController');
 // Route pour l'inscription d'un utilisateur
 router.post('/register', userController.register);
 router.get('/', userController.getAllUsers);
-
 // Route pour la connexion d'un utilisateur
 router.post('/login', userController.login);
-
-// Route pour obtenir le profil d'un utilisateur (supposant que vous avez un tel contrôleur)
-router.get('/profile/:userId', userController.profile);
-
+// Route pour modifier les utilisateurs connectés
+router
+    .route('/:user_id')
+    .all(jwtMiddleware.verifyToken)
+    .delete(userController.deleteUser)
+    .put(userController.putUser)
+    .update(userController.updateUser)
+    .get(userController.getUser)
 
 module.exports = router;

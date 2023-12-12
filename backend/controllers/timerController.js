@@ -6,7 +6,7 @@ const timerController = {
     try {
       const { time } = req.body;
       const timer = new Timer({
-        user_id: req.user._id, // Assurez-vous que req.user est défini par votre middleware d'authentification
+        user_id: req.user._id, 
         time
       });
       await timer.save();

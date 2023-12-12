@@ -1,7 +1,6 @@
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 
-// Assurez-vous d'avoir une variable d'environnement JWT_SECRET définie
 const JWT_SECRET = process.env.JWT_SECRET;
 
 const userController = {
@@ -48,10 +47,46 @@ const userController = {
 
 exports.getAllUsers = async (req, res) => {
     try {
-        const users = await User.find(); // Récupère tous les utilisateurs
+        const users = await User.find(); 
         res.status(200).json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// Mise à jour d'un utilisateur
+exports.updateUser = async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(req.params.userId, req.body, { new: true });
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur non trouvé' });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Suppression d'un utilisateur
+exports.deleteUser = async (req, res) => {
+    try {
+        const user = await User.findByIdAndDelete(req.params.userId);
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur non trouvé' });
+        }
+        res.status(200).json({ message: 'Utilisateur supprimé' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Put un utilisateur
+exports.putUser = async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(req.params.user_id, req.body, {new: true});
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({message: 'Erreur serveur'});
     }
 };
 
