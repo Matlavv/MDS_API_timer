@@ -1,8 +1,8 @@
-#How to exploit ?
+# How to exploit ?
 
-##Clone the project first
+## Clone the project first
 
-#npm install / yarn install
+### npm install / yarn install
 
 create a .env file and add into JWT_KEY=yoursecretkey
 
