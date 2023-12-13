@@ -1,21 +1,31 @@
 const jwt = require('jsonwebtoken');
-const dotenv = require('dotenv');
-dotenv.config();
+require('dotenv').config();
 
-exports.verifyToken = (req, res, next) => {
-    // Le token est normalement envoyé dans un en-tête 'Authorization' sous la forme 'Bearer [token]'
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Diviser le 'Bearer token'
+exports.verifyToken = async (req, res, next) => {
+    try {
+        const token = req.header('authorization');
 
-    if (token == null) {
-        return res.status(403).json({ message: 'Accès interdit : token manquant' });
-    }
-
-    jwt.verify(token, process.env.JWT_KEY, (error, user) => {
-        if (error) {
-            return res.status(403).json({ message: 'Accès interdit: token invalide' });
+        if (token !== undefined) {
+            const payload = await new Promise((resolve, reject) => {
+                jwt.verify(token, process.env.JWT_KEY, (error, decoded) => {
+                    if(error) {
+                        reject(error);
+                    }
+                    else {
+                        resolve(decoded);
+                    }
+                });
+            });
+            req.user = payload;
+            next();
+        } 
+        else {
+            res.status(403).json({message: 'Accès interdit : token manquant'});
         }
-        req.user = user;
-        next(); 
-    });
-};
+    }
+    catch (error) {
+        console.log(error);
+        res.status(403).json({message: "Accès interdit : token invalide"});
+
+    }
+}
