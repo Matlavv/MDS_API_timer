@@ -1,70 +1,64 @@
 const User = require('../models/userModel');
-const jwt = require('jsonwebtoken');
 const Timer = require('../models/timerModel');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt'); // afin de comparer le hash du mot de passe
+require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-exports.register = async (req, res) => {
-  try {
-      const { email, password, role } = req.body;
-      const user = new User({ email, password, role });
-      await user.save();
-      res.status(201).json({ message: 'User registered successfully', userId: user._id });
-  } catch (error) {
-      res.status(500).json({ message: error.message });
-  }
-};
-
-exports.login = async (req, res) => {
-  try {
-      const { email, password } = req.body;
-      const user = await User.findOne({ email });
-      if (!user || !(await user.comparePassword(password))) {
-          return res.status(401).json({ message: 'Invalid credentials' });
-      }
-      const token = jwt.sign({ userId: user._id }, JWT_SECRET);
-      res.status(200).json({ message: 'User logged in successfully', token });
-  } catch (error) {
-      res.status(500).json({ message: error.message });
-  }
-};
-
-exports.getAllUsers = async (req, res) => {
+// méthode pour s'inscrire
+exports.userRegister = async (req, res) => {
     try {
-        const users = await User.find(); 
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+        let newUser = new User(req.body);
+        let user = await newUser.save();
+        res.status(201).json({ message: `Utilisateur créé : ${user.email}, id : ${user.id}` });        
+    } 
+    catch (error) {
+        console.log(error);
+        res.status(401).json({message: 'Requete invalide'});
     }
 };
 
-// Mise à jour d'un utilisateur
-exports.updateUser = async (req, res) => {
+// méthode pour se connecter
+exports.userLogin = async (req, res) => {
     try {
-        const user = await User.findByIdAndUpdate(req.params.userId, req.body, { new: true });
-        if (!user) {
-            return res.status(404).json({ message: 'Utilisateur non trouvé' });
+        const user = await User.findOne({email: req.body.email});
+        if(!user) {
+            res.status(500).json({message: 'Utilisateur non trouvé'});
+            return;
         }
-        res.status(200).json(user);
+
+        const validPassword = await bcrypt.compare(req.body.password, user.password);
+
+        if(user.email == req.body.email && validPassword && user.role == req.body.role) {
+            let userData = {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+            };
+
+            const token = await jwt.sign(userData, process.env.JWT_KEY, {expiresIn: "10h"});
+            res.status(200).json({token});
+            }
+        else {
+            res.status(401).json({message: "Email ou mot de passe ou rôle incorrect."});
+        }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.log(error);
+        res.status(500).json({message: "Une erreur s'est produite lors du traitement."})
     }
 };
 
-// Suppression d'un utilisateur
+// méthode pour supprimer un utilisateur
 exports.deleteUser = async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.userId);
-        if (!user) {
-            return res.status(404).json({ message: 'Utilisateur non trouvé' });
-        }
-        res.status(200).json({ message: 'Utilisateur supprimé' });
+        await User.findByIdAndDelete(req.params.user_id);
+        res.status(200).json({message: 'Utilisateur supprimé'});
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.log(error);
+        res.status(500).json({message: 'Erreur serveur'});
     }
 };
 
-// Put un utilisateur
+// méthode pour modifier partiellement un utilisateur
 exports.putUser = async (req, res) => {
     try {
         const user = await User.findByIdAndUpdate(req.params.user_id, req.body, {new: true});
@@ -74,13 +68,77 @@ exports.putUser = async (req, res) => {
     }
 };
 
-exports.getUserTimers = async (req, res) => {
-  try {
-      const userId = req.params.userId;
-      const timers = await Timer.find({ user_id: userId });
-      res.status(200).json(timers);
-  } catch (error) {
-      res.status(500).json({ message: error.message });
-  }
+// méthode pour modifier un utilisateur
+exports.patchUser = async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(req.params.user_id, req.body, {new: true});
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({message: 'Erreur serveur'});
+    }
 };
-module.exports = userController;
+
+// méthode pour avoir les informations d'un utilisateur
+exports.getUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.user_id);
+        res.status(200).json({ message: `Utilisateur trouvé id : ${user.id}, email : ${user.email}, role : ${user.role}` });  
+        res.json(user);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: 'Erreur serveur'});
+    }
+};
+
+
+// methode pour ajouter un timer à un user
+exports.timerUser = async (req, res) => {
+    try {
+        await User.findById(req.params.user_id);
+        const newTimer = new Timer({...req.body, user_id: req.params.user_id});
+        try {
+            const timer = await newTimer.save();
+            res.status(201).json(timer);
+        } catch (error) {
+            res.status(500).json({message: 'Erreur serveur'});
+        }
+    } catch (error) {
+        res.status(500).json({message: 'Utilisateur non trouvé.'});
+    }
+};
+
+// methode pour avoir les temps d'un utilisateur
+exports.getUserTimer = async (req, res) => {
+    try {
+        const allTimer = await Timer.find({user_id: req.params.user_id});
+        if (allTimer.length == 0) {
+            res.status(500).json({message: 'Aucun temps trouvé.'});
+        } else {
+            res.status(200).json(allTimer);
+        }
+    } catch (error) {
+        res.status(500).json({message: 'Utilisateur non trouvé.'});
+    }
+};
+
+// methode pour avoir la moyenne des temps d'un utilisateur
+exports.getAverageTimerUser = async (req, res) => {
+    try {
+        const allTimer = await Timer.find({user_id: req.params.user_id});
+        if (allTimer.length == 0) {
+            res.status(500).json({message: 'Aucun temps trouvé.'});
+        } else {
+            let reccurence = 0;
+
+            allTimer.forEach(timer => {
+                reccurence += timer.time; 
+            });
+
+            const averageTimer = reccurence / allTimer.length;
+
+            res.status(200).json({averageTimer});
+        }
+    } catch (error) {
+        res.status(500).json({message: 'Utilisateur non trouvé.'});
+    }
+};

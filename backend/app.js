@@ -16,11 +16,6 @@ app.use(express.json());
 const userRoute = require('./routes/userRoute');
 app.use('/users', userRoute);
 
-// Route pour les timers
-const timerRoute = require('./routes/timerRoute');
-app.use('/timers', timerRoute);
-
-
 // Démarrage du serveur Express
 app.listen(port, () => {
   console.log(`Listening on port: ${port}`);
